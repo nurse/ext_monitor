@@ -33,7 +33,7 @@ mcore_alloc(VALUE klass)
     VALUE obj;
 
     obj = TypedData_Make_Struct(klass, struct monitor_core, &mcore_data_type, mc);
-    RB_OBJ_WRITE(obj, &mc->mutex, rb_mutex_new());
+    RB_OBJ_WRITE(obj, &mc->mutex, Qnil);
     RB_OBJ_WRITE(obj, &mc->owner, Qnil);
     mc->count = 0;
 
@@ -46,6 +46,35 @@ mcore_ptr(VALUE mcore)
     struct monitor_core *mc;
     TypedData_Get_Struct(mcore, struct monitor_core, &mcore_data_type, mc);
     return mc;
+}
+
+/*
+ *  call-seq:
+ *     MonitorCore.new
+ *     MonitorCore.new(mutex, owner, count)
+ *
+ * returns MonitorCore object
+ */
+static VALUE
+mcore_init(int argc, VALUE *argv, VALUE mcore)
+{
+    struct monitor_core *mc = mcore_ptr(mcore);
+
+    if (argc == 0) {
+        RB_OBJ_WRITE(mcore, &mc->mutex, rb_mutex_new());
+        RB_OBJ_WRITE(mcore, &mc->owner, Qnil);
+        mc->count = 0;
+    }
+    else if(argc == 3) {
+        RB_OBJ_WRITE(mcore, &mc->mutex, argv[0]);
+        RB_OBJ_WRITE(mcore, &mc->owner, argv[1]);
+        mc->count = NUM2LONG(argv[2]);
+    }
+    else {
+        rb_raise(rb_eArgError, "wrong number of arguments (given %d, expected 0 or 3)", argc);
+    }
+
+    return mcore;
 }
 
 static int
@@ -140,6 +169,9 @@ mcore_exit_for_cond(VALUE mcore)
 {
     struct monitor_core *mc = mcore_ptr(mcore);
     long cnt = mc->count;
+    if (!mc_owner_p(mc)) {
+        rb_raise(rb_eThreadError, "current thread not owner");
+    }
     RB_OBJ_WRITE(mcore, &mc->owner, Qnil);
     mc->count = 0;
     return LONG2NUM(cnt);
@@ -173,12 +205,26 @@ mcore_synchronize(VALUE mcore)
 }
 #endif
 
+/*
+ *  call-seq:
+ *     monitor_core.inspect   -> string
+ *
+ */
+VALUE
+mcore_inspect(VALUE mcore)
+{
+    struct monitor_core *mc = mcore_ptr(mcore);
+    return rb_sprintf("#<%s:%p mutex:%"PRIsVALUE" owner:%"PRIsVALUE" count:%ld>",
+            rb_obj_classname(mcore), (void*)mcore, mc->mutex, mc->owner, mc->count);
+}
+
 void
 Init_ext_monitor(void)
 {
     /* Thread::MonitorCore (internal data for Monitor) */
     VALUE rb_cMonitorCore = rb_define_class_under(rb_cThread, "MonitorCore", rb_cObject);
     rb_define_alloc_func(rb_cMonitorCore, mcore_alloc);
+    rb_define_method(rb_cMonitorCore, "initialize", mcore_init, -1);
     rb_define_method(rb_cMonitorCore, "try_enter", mcore_try_enter, 0);
     rb_define_method(rb_cMonitorCore, "enter", mcore_enter, 0);
     rb_define_method(rb_cMonitorCore, "exit", mcore_exit, 0);
@@ -193,4 +239,5 @@ Init_ext_monitor(void)
     // Ruby definition is faster than C-impl now.
     rb_define_method(rb_cMonitorCore, "synchronize", mcore_synchronize, 0);
 #endif
+    rb_define_method(rb_cMonitorCore, "inspect", mcore_inspect, 0);
 }

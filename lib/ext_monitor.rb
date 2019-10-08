@@ -4,6 +4,8 @@ require "ext_monitor/ext_monitor"
 
 module MonitorMixin
   class ConditionVariable
+    remove_method :wait
+
     #
     # Releases the lock held in the associated monitor and waits; reacquires the lock on wakeup.
     #
@@ -22,38 +24,41 @@ module MonitorMixin
     end
   end
 
+  remove_method :mon_try_enter, :mon_enter, :mon_exit, :mon_locked?, :mon_owned?,
+    :mon_synchronize, :mon_initialize, :mon_check_owner, :mon_enter_for_cond,
+    :mon_exit_for_cond
+
   # Attempts to enter exclusive section.  Returns +false+ if lock fails.
   #
   def mon_try_enter
-    (@mon_data or use_monitor_core).try_enter
+    (defined?(@mon_data) ? @mon_data : use_monitor_core).try_enter
   end
 
   # Enters exclusive section.
   #
   def mon_enter
-    (@mon_data or use_monitor_core).enter
+    (defined?(@mon_data) ? @mon_data : use_monitor_core).enter
   end
 
   #
   # Leaves exclusive section.
   #
   def mon_exit
-    mon_check_owner # TODO merge mon_check_owner and exit
-    (@mon_data or use_monitor_core).exit
+    (defined?(@mon_data) ? @mon_data : use_monitor_core).exit
   end
 
   #
   # Returns true if this monitor is locked by any thread
   #
   def mon_locked?
-    (@mon_data or use_monitor_core).locked?
+    (defined?(@mon_data) ? @mon_data : use_monitor_core).locked?
   end
 
   #
   # Returns true if this monitor is locked by current thread.
   #
   def mon_owned?
-    (@mon_data or use_monitor_core).owned?
+    (defined?(@mon_data) ? @mon_data : use_monitor_core).owned?
   end
 
   #
@@ -81,22 +86,31 @@ module MonitorMixin
   end
 
   def mon_check_owner
-    (@mon_data or use_monitor_core).check_owner
+    (defined?(@mon_data) ? @mon_data : use_monitor_core).check_owner
   end
 
 
   def mon_enter_for_cond(count)
-    (@mon_data or use_monitor_core).enter_for_cond(Thread.current, count)
+    (defined?(@mon_data) ? @mon_data : use_monitor_core).enter_for_cond(Thread.current, count)
   end
 
   def mon_exit_for_cond
-    (@mon_data or use_monitor_core).exit_for_cond
+    (defined?(@mon_data) ? @mon_data : use_monitor_core).exit_for_cond
   end
 
   def use_monitor_core
-    mon_mutex = remove_instance_variable(:@mon_mutex)
-    mon_owner = remove_instance_variable(:@mon_owner)
-    mon_count = remove_instance_variable(:@mon_count)
-    @mon_data = ::Thread::MinotorCore.new(mon_mutex, mon_owner, mon_count)
+    # below doesn't call RUBY_VM_CHECK_INTS
+    @mon_data = ::Thread::MonitorCore.new(@mon_mutex, @mon_owner, @mon_count)
+    @mon_data_owner_object_id = self.object_id
+    remove_instance_variable(:@mon_mutex)
+    remove_instance_variable(:@mon_owner)
+    remove_instance_variable(:@mon_count)
+    @mon_data
   end
+end
+class Monitor
+  alias try_mon_enter mon_try_enter
+  alias try_enter try_mon_enter
+  alias enter mon_enter
+  alias exit mon_exit
 end
