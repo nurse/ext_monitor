@@ -180,6 +180,7 @@ RSpec.describe ExtMonitor do
           expect(monitor.mon_locked?).to be true
           expect(monitor.mon_owned?).to be true
         end
+        th.join
       end
     end
 
