@@ -24,9 +24,10 @@ module MonitorMixin
     end
   end
 
-  remove_method :mon_try_enter, :mon_enter, :mon_exit, :mon_locked?, :mon_owned?,
-    :mon_synchronize, :mon_initialize, :mon_check_owner, :mon_enter_for_cond,
-    :mon_exit_for_cond
+  remove_method :mon_try_enter, :mon_enter, :mon_exit, :mon_synchronize,
+    :mon_initialize, :mon_check_owner, :mon_enter_for_cond, :mon_exit_for_cond
+  remove_method :mon_locked? if defined?(mon_locked?)
+  remove_method :mon_owned? if defined?(mon_owned?)
 
   # Attempts to enter exclusive section.  Returns +false+ if lock fails.
   #
