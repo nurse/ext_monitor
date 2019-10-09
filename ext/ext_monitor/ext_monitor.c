@@ -214,7 +214,7 @@ VALUE
 mcore_inspect(VALUE mcore)
 {
     struct monitor_core *mc = mcore_ptr(mcore);
-    return rb_sprintf("#<%s:%p mutex:%"PRIsVALUE" owner:%"PRIsVALUE" count:%ld>",
+    return rb_sprintf("#<%s:%p mutex:%+"PRIsVALUE" owner:%+"PRIsVALUE" count:%ld>",
             rb_obj_classname(mcore), (void*)mcore, mc->mutex, mc->owner, mc->count);
 }
 
