@@ -1,7 +1,22 @@
 ---
 sudo: false
 language: ruby
-cache: bundler
+os:
+  - linux
 rvm:
-  - 2.5.3
-before_install: gem install bundler -v 2.0.1
+  - 2.1.9
+  - 2.2.10
+  - 2.2.10-clang
+  - 2.3.8
+  - 2.3.8-clang
+  - 2.4.9
+  - 2.4.9-clang
+  - 2.5.7
+  - 2.6.5
+  - ruby-head
+matrix:
+  allow_failures:
+    - rvm: ruby-head
+before_install:
+  - gem install bundler
+cache: bundler
