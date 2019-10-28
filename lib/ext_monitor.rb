@@ -114,4 +114,5 @@ class Monitor
   alias try_enter try_mon_enter
   alias enter mon_enter
   alias exit mon_exit
+  alias synchronize mon_synchronize
 end
