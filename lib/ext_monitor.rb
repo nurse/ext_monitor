@@ -68,11 +68,12 @@ module MonitorMixin
   # +MonitorMixin+.
   #
   def mon_synchronize(&b)
-    @mon_data.enter
+    mon_data = defined?(@mon_data) ? @mon_data : use_monitor_core
+    mon_data.enter
     begin
       yield
     ensure
-      @mon_data.exit
+      mon_data.exit
     end
   end
 
